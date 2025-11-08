@@ -12,8 +12,14 @@ interface ResetPasswordFormData {
 }
 
 const schema: yup.ObjectSchema<ResetPasswordFormData> = yup.object({
-  password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
-  confirmPassword: yup.string().oneOf([yup.ref('password')], 'Passwords must match').required('Confirm password is required'),
+  password: yup
+    .string()
+    .min(6, 'Password must be at least 6 characters')
+    .required('Password is required'),
+  confirmPassword: yup
+    .string()
+    .oneOf([yup.ref('password')], 'Passwords must match')
+    .required('Confirm password is required'),
 });
 
 const ResetPassword: React.FC = () => {
@@ -101,7 +107,9 @@ const ResetPassword: React.FC = () => {
               {...register('confirmPassword')}
               className={errors.confirmPassword ? 'error' : ''}
             />
-            {errors.confirmPassword && <div className="error-message">{errors.confirmPassword.message}</div>}
+            {errors.confirmPassword && (
+              <div className="error-message">{errors.confirmPassword.message}</div>
+            )}
           </div>
 
           <button type="submit" className="btn" disabled={loading}>
@@ -120,4 +128,3 @@ const ResetPassword: React.FC = () => {
 };
 
 export default ResetPassword;
-

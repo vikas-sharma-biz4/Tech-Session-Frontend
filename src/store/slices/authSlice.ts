@@ -42,7 +42,10 @@ export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
     try {
-      const response = await api.post<{ token: string; user: User }>('/auth/login', { email, password });
+      const response = await api.post<{ token: string; user: User }>('/auth/login', {
+        email,
+        password,
+      });
       const { token, user } = response.data;
 
       localStorage.setItem('token', token);
@@ -52,7 +55,33 @@ export const login = createAsyncThunk(
 
       return user;
     } catch (error) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
+      const axiosError = error as {
+        response?: {
+          status?: number;
+          data?: {
+            message?: string;
+            remainingAttempts?: number;
+            remainingTime?: number;
+          };
+        };
+      };
+
+      if (axiosError.response?.status === 423) {
+        // Account locked
+        return rejectWithValue({
+          message: axiosError.response?.data?.message || 'Account temporarily locked',
+          remainingTime: axiosError.response?.data?.remainingTime,
+        });
+      }
+
+      if (axiosError.response?.status === 401) {
+        // Invalid credentials
+        return rejectWithValue({
+          message: axiosError.response?.data?.message || 'Invalid credentials',
+          remainingAttempts: axiosError.response?.data?.remainingAttempts,
+        });
+      }
+
       return rejectWithValue(axiosError.response?.data?.message || 'Login failed');
     }
   }
@@ -60,9 +89,16 @@ export const login = createAsyncThunk(
 
 export const signup = createAsyncThunk(
   'auth/signup',
-  async ({ name, email, password }: { name: string; email: string; password: string }, { rejectWithValue }) => {
+  async (
+    { name, email, password }: { name: string; email: string; password: string },
+    { rejectWithValue }
+  ) => {
     try {
-      const response = await api.post<{ message: string; success?: boolean }>('/auth/signup', { name, email, password });
+      const response = await api.post<{ message: string; success?: boolean }>('/auth/signup', {
+        name,
+        email,
+        password,
+      });
       const data = response.data;
       if (data.success !== false) {
         return { success: true, email };
@@ -79,7 +115,10 @@ export const verifySignupOTP = createAsyncThunk(
   'auth/verifySignupOTP',
   async ({ email, otp }: { email: string; otp: string }, { rejectWithValue }) => {
     try {
-      const response = await api.post<{ token: string; user: User }>('/auth/verify-signup-otp', { email, otp });
+      const response = await api.post<{ token: string; user: User }>('/auth/verify-signup-otp', {
+        email,
+        otp,
+      });
       const { token, user } = response.data;
 
       localStorage.setItem('token', token);
@@ -99,7 +138,10 @@ export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
   async (email: string, { rejectWithValue }) => {
     try {
-      const response = await api.post<{ message: string; success?: boolean }>('/auth/forgot-password', { email });
+      const response = await api.post<{ message: string; success?: boolean }>(
+        '/auth/forgot-password',
+        { email }
+      );
       const data = response.data;
       if (data.success !== false) {
         return { success: true };
@@ -127,7 +169,10 @@ export const verifyOTP = createAsyncThunk(
 
 export const resetPasswordWithOTP = createAsyncThunk(
   'auth/resetPasswordWithOTP',
-  async ({ email, otp, password }: { email: string; otp: string; password: string }, { rejectWithValue }) => {
+  async (
+    { email, otp, password }: { email: string; otp: string; password: string },
+    { rejectWithValue }
+  ) => {
     try {
       await api.post('/auth/reset-password-otp', { email, otp, password });
       return { success: true };
@@ -264,4 +309,3 @@ const authSlice = createSlice({
 
 export const { logout, clearError } = authSlice.actions;
 export default authSlice.reducer;
-
