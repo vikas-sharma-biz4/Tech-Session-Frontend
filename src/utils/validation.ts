@@ -114,6 +114,7 @@ export const trimInput = (value: string): string => {
 /**
  * Validate no leading spaces in password
  */
-export const validatePasswordNoLeadingSpaces = (password: string): boolean => {
+export const validatePasswordNoLeadingSpaces = (password: string | undefined): boolean => {
+  if (!password) return true;
   return password.length === 0 || password[0] !== ' ';
 };

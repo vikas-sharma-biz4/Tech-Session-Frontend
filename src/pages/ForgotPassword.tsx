@@ -61,7 +61,7 @@ const ForgotPassword: React.FC = () => {
   const [canResend, setCanResend] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
-  const emailInputRef = useRef<HTMLInputElement>(null);
+  const emailInputRef = useRef<HTMLInputElement | null>(null);
 
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -211,15 +211,23 @@ const ForgotPassword: React.FC = () => {
               <input
                 type="email"
                 id="email"
-                ref={emailInputRef}
-                {...emailForm.register('email', {
-                  onChange: (e) => {
-                    const sanitized = sanitizeInput(e.target.value);
-                    if (sanitized !== e.target.value) {
-                      e.target.value = sanitized;
-                    }
-                  },
-                })}
+                {...(() => {
+                  const { ref, ...rest } = emailForm.register('email', {
+                    onChange: (e) => {
+                      const sanitized = sanitizeInput(e.target.value);
+                      if (sanitized !== e.target.value) {
+                        e.target.value = sanitized;
+                      }
+                    },
+                  });
+                  return {
+                    ...rest,
+                    ref: (e: HTMLInputElement | null) => {
+                      ref(e);
+                      emailInputRef.current = e;
+                    },
+                  };
+                })()}
                 className={emailForm.formState.errors.email ? 'error' : ''}
                 placeholder="Enter your email"
                 maxLength={255}

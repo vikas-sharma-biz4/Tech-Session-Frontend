@@ -42,7 +42,7 @@ const Login: React.FC = () => {
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
   const [accountLocked, setAccountLocked] = useState<boolean>(false);
   const [lockTime, setLockTime] = useState<number | null>(null);
-  const emailInputRef = useRef<HTMLInputElement>(null);
+  const emailInputRef = useRef<HTMLInputElement | null>(null);
 
   const {
     register,
@@ -183,15 +183,23 @@ const Login: React.FC = () => {
             <input
               type="email"
               id="email"
-              ref={emailInputRef}
-              {...register('email', {
-                onChange: (e) => {
-                  const sanitized = sanitizeInput(e.target.value);
-                  if (sanitized !== e.target.value) {
-                    e.target.value = sanitized;
-                  }
-                },
-              })}
+              {...(() => {
+                const { ref, ...rest } = register('email', {
+                  onChange: (e) => {
+                    const sanitized = sanitizeInput(e.target.value);
+                    if (sanitized !== e.target.value) {
+                      e.target.value = sanitized;
+                    }
+                  },
+                });
+                return {
+                  ...rest,
+                  ref: (e: HTMLInputElement | null) => {
+                    ref(e);
+                    emailInputRef.current = e;
+                  },
+                };
+              })()}
               className={errors.email ? 'error' : ''}
               placeholder="Enter your email"
               maxLength={255}
