@@ -1,4 +1,10 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError, AxiosRequestHeaders } from 'axios';
+import axios, {
+  AxiosInstance,
+  InternalAxiosRequestConfig,
+  AxiosResponse,
+  AxiosError,
+  AxiosRequestHeaders,
+} from 'axios';
 
 const api: AxiosInstance = axios.create({
   baseURL: process.env.REACT_APP_API_URL || '/api',
@@ -32,4 +38,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-

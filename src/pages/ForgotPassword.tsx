@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -6,15 +6,49 @@ import * as yup from 'yup';
 import { useAppDispatch } from '../store/hooks';
 import { forgotPassword, resetPasswordWithOTP } from '../store/slices/authSlice';
 import { ForgotPasswordFormData, ResetPasswordFormData } from '../types';
+import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
+import {
+  sanitizeInput,
+  preventPasswordPaste,
+  preventPasswordContextMenu,
+  formatOTPInput,
+} from '../utils/validation';
+
+// Password validation regex: 8-16 chars, alphanumeric, at least one uppercase, one lowercase, one number, one special char
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,16}$/;
 
 const emailSchema: yup.ObjectSchema<ForgotPasswordFormData> = yup.object({
-  email: yup.string().email('Invalid email').required('Email is required'),
+  email: yup
+    .string()
+    .email('Invalid email format')
+    .matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Email must contain @ and domain')
+    .max(255, 'Email must be at most 255 characters')
+    .required('Email is required'),
 });
 
 const otpSchema: yup.ObjectSchema<ResetPasswordFormData> = yup.object({
-  otp: yup.string().matches(/^[0-9]{6}$/, 'OTP must be 6 digits').required('OTP is required'),
-  password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
-  confirmPassword: yup.string().oneOf([yup.ref('password')], 'Passwords must match').required('Confirm password is required'),
+  otp: yup
+    .string()
+    .matches(/^[0-9]{6}$/, 'OTP must be 6 digits')
+    .required('OTP is required'),
+  password: yup
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(16, 'Password must be at most 16 characters')
+    .matches(
+      passwordPattern,
+      'Password must contain 8-16 characters with at least one uppercase, one lowercase, one number, and one special character (@$!%*?&#)'
+    )
+    .test(
+      'no-leading-space',
+      'Password cannot start with a space',
+      (value) => !value || !value.startsWith(' ')
+    )
+    .required('Password is required'),
+  confirmPassword: yup
+    .string()
+    .oneOf([yup.ref('password')], 'Passwords must match')
+    .required('Confirm password is required'),
 });
 
 const ForgotPassword: React.FC = () => {
@@ -25,9 +59,19 @@ const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState<string>('');
   const [resendTimer, setResendTimer] = useState<number>(0);
   const [canResend, setCanResend] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const emailInputRef = useRef<HTMLInputElement>(null);
 
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+
+  // Auto-focus on email field when component mounts
+  useEffect(() => {
+    if (step === 1 && emailInputRef.current) {
+      emailInputRef.current.focus();
+    }
+  }, [step]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -65,7 +109,7 @@ const ForgotPassword: React.FC = () => {
     setSuccess('');
 
     const result = await dispatch(forgotPassword(data.email));
-    
+
     if (forgotPassword.fulfilled.match(result)) {
       const payload = result.payload as { success: boolean; resetUrl?: string; otp?: string };
       if (payload.success) {
@@ -92,7 +136,9 @@ const ForgotPassword: React.FC = () => {
     setError('');
     setSuccess('');
 
-    const result = await dispatch(resetPasswordWithOTP({ email, otp: data.otp, password: data.password }));
+    const result = await dispatch(
+      resetPasswordWithOTP({ email, otp: data.otp, password: data.password })
+    );
 
     if (resetPasswordWithOTP.fulfilled.match(result)) {
       const payload = result.payload as { success: boolean };
@@ -141,21 +187,42 @@ const ForgotPassword: React.FC = () => {
       <div className="auth-card">
         <div className="auth-header">
           <h1>Reset Password</h1>
-          <p>{step === 1 ? 'Enter your email to receive an OTP' : 'Enter OTP and your new password'}</p>
+          <p>
+            {step === 1 ? 'Enter your email to receive an OTP' : 'Enter OTP and your new password'}
+          </p>
         </div>
 
         {error && <div className="error-message">{error}</div>}
         {success && <div className="success-message">{success}</div>}
 
         {step === 1 && (
-          <form onSubmit={emailForm.handleSubmit(onEmailSubmit)}>
+          <form
+            onSubmit={emailForm.handleSubmit(onEmailSubmit)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !loading) {
+                e.currentTarget.requestSubmit();
+              }
+            }}
+          >
             <div className="form-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">
+                Email <span style={{ color: '#e74c3c' }}>*</span>
+              </label>
               <input
                 type="email"
                 id="email"
-                {...emailForm.register('email')}
+                ref={emailInputRef}
+                {...emailForm.register('email', {
+                  onChange: (e) => {
+                    const sanitized = sanitizeInput(e.target.value);
+                    if (sanitized !== e.target.value) {
+                      e.target.value = sanitized;
+                    }
+                  },
+                })}
                 className={emailForm.formState.errors.email ? 'error' : ''}
+                placeholder="Enter your email"
+                maxLength={255}
               />
               {emailForm.formState.errors.email && (
                 <div className="error-message">{emailForm.formState.errors.email.message}</div>
@@ -177,7 +244,11 @@ const ForgotPassword: React.FC = () => {
                 id="otp"
                 placeholder="Enter 6-digit OTP"
                 maxLength={6}
-                {...otpForm.register('otp')}
+                {...otpForm.register('otp', {
+                  onChange: (e) => {
+                    e.target.value = formatOTPInput(e.target.value);
+                  },
+                })}
                 className={otpForm.formState.errors.otp ? 'error' : ''}
                 style={{
                   letterSpacing: 'normal',
@@ -197,6 +268,11 @@ const ForgotPassword: React.FC = () => {
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = '#e1e5e9';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !loading) {
+                    e.currentTarget.form?.requestSubmit();
+                  }
                 }}
               />
               {otpForm.formState.errors.otp && (
@@ -252,34 +328,64 @@ const ForgotPassword: React.FC = () => {
                   color: '#333',
                 }}
               >
-                New Password
+                New Password <span style={{ color: '#e74c3c' }}>*</span>
               </label>
-              <input
-                type="password"
-                id="password"
-                placeholder="Enter new password"
-                {...otpForm.register('password')}
-                className={otpForm.formState.errors.password ? 'error' : ''}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '2px solid #e1e5e9',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  boxSizing: 'border-box',
-                  transition: 'all 0.2s ease',
-                  outline: 'none',
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#4A90E2';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e1e5e9';
-                }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  placeholder="Enter new password (8-16 characters)"
+                  {...otpForm.register('password', {
+                    onChange: (e) => {
+                      if (e.target.value.startsWith(' ')) {
+                        e.target.value = e.target.value.trimStart();
+                      }
+                    },
+                  })}
+                  className={otpForm.formState.errors.password ? 'error' : ''}
+                  maxLength={16}
+                  onPaste={preventPasswordPaste}
+                  onContextMenu={preventPasswordContextMenu}
+                  style={{
+                    width: '100%',
+                    padding: '12px 40px 12px 16px',
+                    border: '2px solid #e1e5e9',
+                    borderRadius: '6px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box',
+                    transition: 'all 0.2s ease',
+                    outline: 'none',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#4A90E2';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e1e5e9';
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    color: '#666',
+                  }}
+                  tabIndex={-1}
+                >
+                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
               {otpForm.formState.errors.password && (
                 <div className="error-message">{otpForm.formState.errors.password.message}</div>
               )}
+              <PasswordStrengthIndicator password={otpForm.watch('password') || ''} />
             </div>
 
             <div className="form-group">
@@ -292,33 +398,64 @@ const ForgotPassword: React.FC = () => {
                   color: '#333',
                 }}
               >
-                Confirm New Password
+                Confirm New Password <span style={{ color: '#e74c3c' }}>*</span>
               </label>
-              <input
-                type="password"
-                id="confirmPassword"
-                placeholder="Confirm new password"
-                {...otpForm.register('confirmPassword')}
-                className={otpForm.formState.errors.confirmPassword ? 'error' : ''}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '2px solid #e1e5e9',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  boxSizing: 'border-box',
-                  transition: 'all 0.2s ease',
-                  outline: 'none',
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#4A90E2';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e1e5e9';
-                }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  id="confirmPassword"
+                  placeholder="Confirm new password"
+                  {...otpForm.register('confirmPassword', {
+                    onChange: (e) => {
+                      if (e.target.value.startsWith(' ')) {
+                        e.target.value = e.target.value.trimStart();
+                      }
+                    },
+                  })}
+                  className={otpForm.formState.errors.confirmPassword ? 'error' : ''}
+                  maxLength={16}
+                  onPaste={preventPasswordPaste}
+                  onContextMenu={preventPasswordContextMenu}
+                  style={{
+                    width: '100%',
+                    padding: '12px 40px 12px 16px',
+                    border: '2px solid #e1e5e9',
+                    borderRadius: '6px',
+                    fontSize: '16px',
+                    boxSizing: 'border-box',
+                    transition: 'all 0.2s ease',
+                    outline: 'none',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#4A90E2';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#e1e5e9';
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    color: '#666',
+                  }}
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
               {otpForm.formState.errors.confirmPassword && (
-                <div className="error-message">{otpForm.formState.errors.confirmPassword.message}</div>
+                <div className="error-message">
+                  {otpForm.formState.errors.confirmPassword.message}
+                </div>
               )}
             </div>
 
@@ -355,4 +492,3 @@ const ForgotPassword: React.FC = () => {
 };
 
 export default ForgotPassword;
-

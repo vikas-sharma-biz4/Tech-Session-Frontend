@@ -58,4 +58,3 @@ export interface AuthContextType {
   resetPasswordWithOTP: (email: string, otp: string, password: string) => Promise<AuthResult>;
   resetPassword: (token: string, password: string) => Promise<AuthResult>;
 }
-

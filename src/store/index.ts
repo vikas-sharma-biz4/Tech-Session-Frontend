@@ -8,11 +8,14 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: ['auth/checkAuth/pending', 'auth/checkAuth/fulfilled', 'auth/checkAuth/rejected'],
+        ignoredActions: [
+          'auth/checkAuth/pending',
+          'auth/checkAuth/fulfilled',
+          'auth/checkAuth/rejected',
+        ],
       },
     }),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
-

@@ -22,7 +22,17 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css}\"",
+    "lint": "eslint src --ext .ts,.tsx,.js,.jsx --max-warnings 0",
+    "lint:fix": "eslint src --ext .ts,.tsx,.js,.jsx --fix",
+    "type-check": "tsc --noEmit",
+    "check:any": "node scripts/check-any.js",
+    "check:quality": "node scripts/check-code-quality.js",
+    "normalize:eol": "node scripts/normalize-line-endings.js",
+    "validate": "npm run type-check && npm run lint && npm run format:check && npm run check:any && npm run check:quality",
+    "prepare": "husky install || true"
   },
   "eslintConfig": {
     "extends": [
@@ -47,6 +57,11 @@
     "@types/node": "^20.10.6",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "husky": "^8.0.3",
+    "lint-staged": "^16.2.6",
+    "prettier": "^3.6.2",
     "typescript": "^5.3.3"
   }
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -7,20 +7,58 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { signup, verifySignupOTP } from '../store/slices/authSlice';
 import { selectLoading, selectError, selectIsAuthenticated } from '../store/selectors';
 import { SignupFormData } from '../types';
+import PasswordStrengthIndicator from '../components/PasswordStrengthIndicator';
+import {
+  sanitizeInput,
+  preventPasswordPaste,
+  preventPasswordContextMenu,
+  formatOTPInput,
+  validatePasswordNoLeadingSpaces,
+} from '../utils/validation';
+
+// Password validation regex: 8-16 chars, alphanumeric, at least one uppercase, one lowercase, one number, one special char
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,16}$/;
+const namePattern = /^[a-zA-Z\s'-]{2,50}$/;
 
 const signupSchema: yup.ObjectSchema<SignupFormData> = yup.object({
   name: yup
     .string()
     .min(2, 'Name must be at least 2 characters')
     .max(50, 'Name must be at most 50 characters')
-    .required('Name is required'),
-  email: yup.string().email('Invalid email').required('Email is required'),
-  password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
-  confirmPassword: yup.string().oneOf([yup.ref('password')], 'Passwords must match').required('Confirm password is required'),
+    .matches(namePattern, 'Name can only contain letters, spaces, hyphens, and apostrophes')
+    .required('Name is required')
+    .test(
+      'no-leading-space',
+      'Name cannot start with a space',
+      (value) => !value || value.trim() === value
+    ),
+  email: yup
+    .string()
+    .email('Invalid email format')
+    .matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Email must contain @ and domain')
+    .max(255, 'Email must be at most 255 characters')
+    .required('Email is required'),
+  password: yup
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(16, 'Password must be at most 16 characters')
+    .matches(
+      passwordPattern,
+      'Password must contain 8-16 characters with at least one uppercase, one lowercase, one number, and one special character (@$!%*?&#)'
+    )
+    .test('no-leading-space', 'Password cannot start with a space', validatePasswordNoLeadingSpaces)
+    .required('Password is required'),
+  confirmPassword: yup
+    .string()
+    .oneOf([yup.ref('password')], 'Passwords must match')
+    .required('Confirm password is required'),
 });
 
 const otpSchema = yup.object({
-  otp: yup.string().matches(/^[0-9]{6}$/, 'OTP must be 6 digits').required('OTP is required'),
+  otp: yup
+    .string()
+    .matches(/^[0-9]{6}$/, 'OTP must be 6 digits')
+    .required('OTP is required'),
 });
 
 interface OTPFormData {
@@ -33,6 +71,9 @@ const Signup: React.FC = () => {
   const [success, setSuccess] = useState<string>('');
   const [resendTimer, setResendTimer] = useState<number>(0);
   const [canResend, setCanResend] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const dispatch = useAppDispatch();
   const loading = useAppSelector(selectLoading);
@@ -55,6 +96,13 @@ const Signup: React.FC = () => {
       navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
+
+  // Auto-focus on name field when component mounts
+  useEffect(() => {
+    if (step === 1 && nameInputRef.current) {
+      nameInputRef.current.focus();
+    }
+  }, [step]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -82,8 +130,10 @@ const Signup: React.FC = () => {
   };
 
   const onSignupSubmit = async (data: SignupFormData): Promise<void> => {
-    const result = await dispatch(signup({ name: data.name, email: data.email, password: data.password }));
-    
+    const result = await dispatch(
+      signup({ name: data.name, email: data.email, password: data.password })
+    );
+
     if (signup.fulfilled.match(result)) {
       const payload = result.payload as { success: boolean; email?: string };
       if (payload.success) {
@@ -101,7 +151,7 @@ const Signup: React.FC = () => {
 
   const onOTPSubmit = async (data: OTPFormData): Promise<void> => {
     const result = await dispatch(verifySignupOTP({ email, otp: data.otp }));
-    
+
     if (verifySignupOTP.fulfilled.match(result)) {
       navigate('/dashboard');
     }
@@ -110,11 +160,13 @@ const Signup: React.FC = () => {
   const onResendOTP = async (): Promise<void> => {
     if (!canResend || !email) return;
 
-    const result = await dispatch(signup({ 
-      name: signupForm.getValues('name'), 
-      email, 
-      password: signupForm.getValues('password') 
-    }));
+    const result = await dispatch(
+      signup({
+        name: signupForm.getValues('name'),
+        email,
+        password: signupForm.getValues('password'),
+      })
+    );
 
     if (signup.fulfilled.match(result)) {
       setSuccess('New OTP sent to your email!');
@@ -142,7 +194,13 @@ const Signup: React.FC = () => {
               className="btn-google"
               disabled={loading}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                   fill="#4285F4"
@@ -167,14 +225,33 @@ const Signup: React.FC = () => {
               <span>OR</span>
             </div>
 
-            <form onSubmit={signupForm.handleSubmit(onSignupSubmit)}>
+            <form
+              onSubmit={signupForm.handleSubmit(onSignupSubmit)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !loading) {
+                  e.currentTarget.requestSubmit();
+                }
+              }}
+            >
               <div className="form-group">
-                <label htmlFor="name">Full Name</label>
-                <input 
-                  type="text" 
-                  id="name" 
-                  {...signupForm.register('name')} 
-                  className={signupForm.formState.errors.name ? 'error' : ''} 
+                <label htmlFor="name">
+                  Full Name <span style={{ color: '#e74c3c' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  ref={nameInputRef}
+                  {...signupForm.register('name', {
+                    onChange: (e) => {
+                      const sanitized = sanitizeInput(e.target.value);
+                      if (sanitized !== e.target.value) {
+                        e.target.value = sanitized;
+                      }
+                    },
+                  })}
+                  className={signupForm.formState.errors.name ? 'error' : ''}
+                  placeholder="Enter your full name"
+                  maxLength={50}
                 />
                 {signupForm.formState.errors.name && (
                   <div className="error-message">{signupForm.formState.errors.name.message}</div>
@@ -182,12 +259,23 @@ const Signup: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="email">Email</label>
-                <input 
-                  type="email" 
-                  id="email" 
-                  {...signupForm.register('email')} 
-                  className={signupForm.formState.errors.email ? 'error' : ''} 
+                <label htmlFor="email">
+                  Email <span style={{ color: '#e74c3c' }}>*</span>
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  {...signupForm.register('email', {
+                    onChange: (e) => {
+                      const sanitized = sanitizeInput(e.target.value);
+                      if (sanitized !== e.target.value) {
+                        e.target.value = sanitized;
+                      }
+                    },
+                  })}
+                  className={signupForm.formState.errors.email ? 'error' : ''}
+                  placeholder="Enter your email"
+                  maxLength={255}
                 />
                 {signupForm.formState.errors.email && (
                   <div className="error-message">{signupForm.formState.errors.email.message}</div>
@@ -195,28 +283,99 @@ const Signup: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="password">Password</label>
-                <input
-                  type="password"
-                  id="password"
-                  {...signupForm.register('password')}
-                  className={signupForm.formState.errors.password ? 'error' : ''}
-                />
+                <label htmlFor="password">
+                  Password <span style={{ color: '#e74c3c' }}>*</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    {...signupForm.register('password', {
+                      onChange: (e) => {
+                        if (e.target.value.startsWith(' ')) {
+                          e.target.value = e.target.value.trimStart();
+                        }
+                      },
+                    })}
+                    className={signupForm.formState.errors.password ? 'error' : ''}
+                    placeholder="Enter password (8-16 characters)"
+                    maxLength={16}
+                    onPaste={preventPasswordPaste}
+                    onContextMenu={preventPasswordContextMenu}
+                    style={{ paddingRight: '40px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      color: '#666',
+                    }}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? '👁️' : '👁️‍🗨️'}
+                  </button>
+                </div>
                 {signupForm.formState.errors.password && (
-                  <div className="error-message">{signupForm.formState.errors.password.message}</div>
+                  <div className="error-message">
+                    {signupForm.formState.errors.password.message}
+                  </div>
                 )}
+                <PasswordStrengthIndicator password={signupForm.watch('password') || ''} />
               </div>
 
               <div className="form-group">
-                <label htmlFor="confirmPassword">Confirm Password</label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  {...signupForm.register('confirmPassword')}
-                  className={signupForm.formState.errors.confirmPassword ? 'error' : ''}
-                />
+                <label htmlFor="confirmPassword">
+                  Confirm Password <span style={{ color: '#e74c3c' }}>*</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    id="confirmPassword"
+                    {...signupForm.register('confirmPassword', {
+                      onChange: (e) => {
+                        if (e.target.value.startsWith(' ')) {
+                          e.target.value = e.target.value.trimStart();
+                        }
+                      },
+                    })}
+                    className={signupForm.formState.errors.confirmPassword ? 'error' : ''}
+                    placeholder="Confirm your password"
+                    maxLength={16}
+                    onPaste={preventPasswordPaste}
+                    onContextMenu={preventPasswordContextMenu}
+                    style={{ paddingRight: '40px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      color: '#666',
+                    }}
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+                  </button>
+                </div>
                 {signupForm.formState.errors.confirmPassword && (
-                  <div className="error-message">{signupForm.formState.errors.confirmPassword.message}</div>
+                  <div className="error-message">
+                    {signupForm.formState.errors.confirmPassword.message}
+                  </div>
                 )}
               </div>
 
@@ -236,7 +395,11 @@ const Signup: React.FC = () => {
                 id="otp"
                 placeholder="Enter 6-digit OTP"
                 maxLength={6}
-                {...otpForm.register('otp')}
+                {...otpForm.register('otp', {
+                  onChange: (e) => {
+                    e.target.value = formatOTPInput(e.target.value);
+                  },
+                })}
                 className={otpForm.formState.errors.otp ? 'error' : ''}
                 style={{
                   letterSpacing: 'normal',
@@ -256,6 +419,11 @@ const Signup: React.FC = () => {
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = '#e1e5e9';
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !loading) {
+                    e.currentTarget.form?.requestSubmit();
+                  }
                 }}
               />
               {otpForm.formState.errors.otp && (
@@ -319,4 +487,3 @@ const Signup: React.FC = () => {
 };
 
 export default Signup;
-
