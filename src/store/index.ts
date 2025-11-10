@@ -21,11 +21,11 @@ type AuthStateForTransform = {
 };
 
 const authTransform = createTransform<AuthStateForTransform, AuthStateForTransform>(
-  (inboundState) => {
+  (inboundState: AuthStateForTransform) => {
     const { loading: _loading, error: _error, ...rest } = inboundState;
     return rest as AuthStateForTransform;
   },
-  (outboundState) => {
+  (outboundState: AuthStateForTransform) => {
     return {
       ...outboundState,
       loading: false,
