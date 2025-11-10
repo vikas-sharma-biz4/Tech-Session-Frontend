@@ -23,15 +23,15 @@ export const initializeSocket = async (): Promise<Socket> => {
   });
 
   socket.on('connect', () => {
-    console.log('✅ Socket.IO connected');
+    // Socket.IO connected
   });
 
   socket.on('disconnect', () => {
-    console.log('❌ Socket.IO disconnected');
+    // Socket.IO disconnected
   });
 
-  socket.on('connect_error', (error) => {
-    console.error('Socket.IO connection error:', error);
+  socket.on('connect_error', () => {
+    // Socket.IO connection error
   });
 
   return socket;
