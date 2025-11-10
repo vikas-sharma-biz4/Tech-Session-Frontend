@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAppSelector } from '../store/hooks';
 import { selectUser } from '../store/selectors';
+import FileUpload from '../components/FileUpload';
 
 const Dashboard: React.FC = () => {
   const user = useAppSelector(selectUser);
@@ -33,6 +34,8 @@ const Dashboard: React.FC = () => {
               </p>
             </div>
           </div>
+
+          <FileUpload />
         </div>
       </div>
     </div>
