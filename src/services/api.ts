@@ -5,6 +5,7 @@ import axios, {
   AxiosError,
   AxiosRequestHeaders,
 } from 'axios';
+import secureStorage from '../utils/secureStorage';
 
 const api: AxiosInstance = axios.create({
   baseURL: process.env.REACT_APP_API_URL || '/api',
@@ -14,8 +15,8 @@ const api: AxiosInstance = axios.create({
 });
 
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('token');
+  async (config: InternalAxiosRequestConfig) => {
+    const token = await secureStorage.getItem('token');
     if (token && config.headers) {
       (config.headers as AxiosRequestHeaders).Authorization = `Bearer ${token}`;
     }
@@ -28,9 +29,9 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
+      await secureStorage.removeItem('token');
       window.location.href = '/login';
     }
     return Promise.reject(error);

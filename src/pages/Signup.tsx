@@ -73,7 +73,7 @@ const Signup: React.FC = () => {
   const [canResend, setCanResend] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
-  const nameInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   const dispatch = useAppDispatch();
   const loading = useAppSelector(selectLoading);
@@ -240,15 +240,23 @@ const Signup: React.FC = () => {
                 <input
                   type="text"
                   id="name"
-                  ref={nameInputRef}
-                  {...signupForm.register('name', {
-                    onChange: (e) => {
-                      const sanitized = sanitizeInput(e.target.value);
-                      if (sanitized !== e.target.value) {
-                        e.target.value = sanitized;
-                      }
-                    },
-                  })}
+                  {...(() => {
+                    const { ref, ...rest } = signupForm.register('name', {
+                      onChange: (e) => {
+                        const sanitized = sanitizeInput(e.target.value);
+                        if (sanitized !== e.target.value) {
+                          e.target.value = sanitized;
+                        }
+                      },
+                    });
+                    return {
+                      ...rest,
+                      ref: (e: HTMLInputElement | null) => {
+                        ref(e);
+                        nameInputRef.current = e;
+                      },
+                    };
+                  })()}
                   className={signupForm.formState.errors.name ? 'error' : ''}
                   placeholder="Enter your full name"
                   maxLength={50}

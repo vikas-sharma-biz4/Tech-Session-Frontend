@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 import { User } from '../../types';
+import secureStorage from '../../utils/secureStorage';
 
 interface AuthState {
   user: User | null;
@@ -18,7 +19,7 @@ const initialState: AuthState = {
 
 export const checkAuth = createAsyncThunk('auth/checkAuth', async (_, { rejectWithValue }) => {
   try {
-    const token = localStorage.getItem('token');
+    const token = await secureStorage.getItem('token');
     if (!token) {
       return null;
     }
@@ -30,7 +31,7 @@ export const checkAuth = createAsyncThunk('auth/checkAuth', async (_, { rejectWi
     const response = await api.get<{ user: User }>('/user/profile');
     return response.data.user;
   } catch (error) {
-    localStorage.removeItem('token');
+    await secureStorage.removeItem('token');
     if (api.defaults.headers.common) {
       delete api.defaults.headers.common['Authorization'];
     }
@@ -48,7 +49,7 @@ export const login = createAsyncThunk(
       });
       const { token, user } = response.data;
 
-      localStorage.setItem('token', token);
+      await secureStorage.setItem('token', token);
       if (api.defaults.headers.common) {
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       }
@@ -67,7 +68,6 @@ export const login = createAsyncThunk(
       };
 
       if (axiosError.response?.status === 423) {
-        // Account locked
         return rejectWithValue({
           message: axiosError.response?.data?.message || 'Account temporarily locked',
           remainingTime: axiosError.response?.data?.remainingTime,
@@ -75,7 +75,6 @@ export const login = createAsyncThunk(
       }
 
       if (axiosError.response?.status === 401) {
-        // Invalid credentials
         return rejectWithValue({
           message: axiosError.response?.data?.message || 'Invalid credentials',
           remainingAttempts: axiosError.response?.data?.remainingAttempts,
@@ -121,7 +120,7 @@ export const verifySignupOTP = createAsyncThunk(
       });
       const { token, user } = response.data;
 
-      localStorage.setItem('token', token);
+      await secureStorage.setItem('token', token);
       if (api.defaults.headers.common) {
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       }
@@ -200,7 +199,7 @@ export const handleOAuthCallback = createAsyncThunk(
   'auth/handleOAuthCallback',
   async ({ token, user }: { token: string; user: User }, { rejectWithValue }) => {
     try {
-      localStorage.setItem('token', token);
+      await secureStorage.setItem('token', token);
       if (api.defaults.headers.common) {
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       }
@@ -216,7 +215,9 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     logout: (state) => {
-      localStorage.removeItem('token');
+      secureStorage.removeItem('token').catch((err) => {
+        console.error('Failed to remove token:', err);
+      });
       if (api.defaults.headers.common) {
         delete api.defaults.headers.common['Authorization'];
       }
