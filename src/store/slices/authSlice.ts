@@ -31,7 +31,7 @@ export const checkAuth = createAsyncThunk('auth/checkAuth', async (_, { rejectWi
     const response = await api.get<{ user: User }>('/user/profile');
     return response.data.user;
   } catch (error) {
-    secureStorage.removeItem('token');
+    await secureStorage.removeItem('token');
     if (api.defaults.headers.common) {
       delete api.defaults.headers.common['Authorization'];
     }
@@ -68,7 +68,6 @@ export const login = createAsyncThunk(
       };
 
       if (axiosError.response?.status === 423) {
-        // Account locked
         return rejectWithValue({
           message: axiosError.response?.data?.message || 'Account temporarily locked',
           remainingTime: axiosError.response?.data?.remainingTime,
@@ -76,7 +75,6 @@ export const login = createAsyncThunk(
       }
 
       if (axiosError.response?.status === 401) {
-        // Invalid credentials
         return rejectWithValue({
           message: axiosError.response?.data?.message || 'Invalid credentials',
           remainingAttempts: axiosError.response?.data?.remainingAttempts,
@@ -217,7 +215,9 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     logout: (state) => {
-      secureStorage.removeItem('token');
+      secureStorage.removeItem('token').catch((err) => {
+        console.error('Failed to remove token:', err);
+      });
       if (api.defaults.headers.common) {
         delete api.defaults.headers.common['Authorization'];
       }

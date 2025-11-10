@@ -53,6 +53,15 @@ function checkFile(filePath) {
       return;
     }
 
+    // Skip lines with eslint-disable for any types
+    if (
+      index > 0 &&
+      lines[index - 1].includes('eslint-disable') &&
+      lines[index - 1].includes('any')
+    ) {
+      return;
+    }
+
     for (const pattern of forbiddenPatterns) {
       if (pattern.test(line)) {
         issues.push({

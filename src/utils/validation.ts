@@ -1,8 +1,5 @@
-/**
- * Password strength validation
- */
 export interface PasswordStrength {
-  score: number; // 0-4
+  score: number;
   feedback: string[];
   isValid: boolean;
 }
@@ -50,15 +47,12 @@ export const validatePasswordStrength = (password: string): PasswordStrength => 
   const isValid = score >= 6 && password.length >= 8 && password.length <= 16;
 
   return {
-    score: Math.min(score, 4), // Cap at 4 for UI display
+    score: Math.min(score, 4),
     feedback,
     isValid,
   };
 };
 
-/**
- * Sanitize input to prevent XSS
- */
 export const sanitizeInput = (input: string): string => {
   return input
     .replace(/[<>]/g, '')
@@ -67,53 +61,32 @@ export const sanitizeInput = (input: string): string => {
     .trim();
 };
 
-/**
- * Validate email format
- */
 export const validateEmail = (email: string): boolean => {
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   return emailRegex.test(email);
 };
 
-/**
- * Validate name format
- */
 export const validateName = (name: string): boolean => {
   const nameRegex = /^[a-zA-Z\s'-]{2,50}$/;
   return nameRegex.test(name);
 };
 
-/**
- * Prevent copy-paste on password fields
- */
 export const preventPasswordPaste = (e: React.ClipboardEvent<HTMLInputElement>): void => {
   e.preventDefault();
 };
 
-/**
- * Prevent context menu on password fields (right-click)
- */
 export const preventPasswordContextMenu = (e: React.MouseEvent<HTMLInputElement>): void => {
   e.preventDefault();
 };
 
-/**
- * Format OTP input (numbers only)
- */
 export const formatOTPInput = (value: string): string => {
   return value.replace(/\D/g, '').substring(0, 6);
 };
 
-/**
- * Trim leading/trailing spaces from input
- */
 export const trimInput = (value: string): string => {
   return value.trim();
 };
 
-/**
- * Validate no leading spaces in password
- */
 export const validatePasswordNoLeadingSpaces = (password: string | undefined): boolean => {
   if (!password) return true;
   return password.length === 0 || password[0] !== ' ';

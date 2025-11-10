@@ -31,7 +31,7 @@ api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError) => {
     if (error.response?.status === 401) {
-      secureStorage.removeItem('token');
+      await secureStorage.removeItem('token');
       window.location.href = '/login';
     }
     return Promise.reject(error);
