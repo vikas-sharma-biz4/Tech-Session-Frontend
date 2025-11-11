@@ -52,6 +52,10 @@ const signupSchema: yup.ObjectSchema<SignupFormData> = yup.object({
     .string()
     .oneOf([yup.ref('password')], 'Passwords must match')
     .required('Confirm password is required'),
+  role: yup
+    .string()
+    .oneOf(['buyer', 'seller', 'admin'], 'Invalid role selected')
+    .required('Please select your role'),
 });
 
 const otpSchema = yup.object({
@@ -131,7 +135,12 @@ const Signup: React.FC = () => {
 
   const onSignupSubmit = async (data: SignupFormData): Promise<void> => {
     const result = await dispatch(
-      signup({ name: data.name, email: data.email, password: data.password })
+      signup({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        role: data.role || 'buyer',
+      })
     );
 
     if (signup.fulfilled.match(result)) {
@@ -153,7 +162,15 @@ const Signup: React.FC = () => {
     const result = await dispatch(verifySignupOTP({ email, otp: data.otp }));
 
     if (verifySignupOTP.fulfilled.match(result)) {
-      navigate('/dashboard');
+      const user = result.payload as { role?: 'buyer' | 'seller' | 'admin' } | undefined;
+      const userRole = user?.role || 'buyer';
+
+      // Redirect based on role
+      if (userRole === 'seller' || userRole === 'admin') {
+        navigate('/dashboard'); // Seller dashboard
+      } else {
+        navigate('/dashboard'); // For now, same dashboard
+      }
     }
   };
 
@@ -165,6 +182,7 @@ const Signup: React.FC = () => {
         name: signupForm.getValues('name'),
         email,
         password: signupForm.getValues('password'),
+        role: signupForm.getValues('role') || 'buyer',
       })
     );
 
@@ -176,22 +194,49 @@ const Signup: React.FC = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h1>Create Account</h1>
-          <p>{step === 1 ? 'Sign up for a new account' : 'Verify your email address'}</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
+        <div className="text-center">
+          <div className="flex items-center justify-center mb-4">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg shadow-md">
+              <svg
+                className="w-7 h-7 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                />
+              </svg>
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
+          <p className="text-gray-600">
+            {step === 1 ? 'Sign up for a new account' : 'Verify your email address'}
+          </p>
         </div>
 
-        {error && <div className="error-message">{error}</div>}
-        {success && <div className="success-message">{success}</div>}
+        {error && (
+          <div className="text-sm text-red-600 p-3 bg-red-50 border border-red-200 rounded-md">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="text-sm text-green-600 p-3 bg-green-50 border border-green-200 rounded-md">
+            {success}
+          </div>
+        )}
 
         {step === 1 && (
           <>
             <button
               type="button"
               onClick={handleGoogleSignup}
-              className="btn-google"
+              className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               disabled={loading}
             >
               <svg
@@ -221,8 +266,13 @@ const Signup: React.FC = () => {
               Continue with Google
             </button>
 
-            <div className="divider">
-              <span>OR</span>
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-white text-gray-500">OR</span>
+              </div>
             </div>
 
             <form
@@ -232,10 +282,11 @@ const Signup: React.FC = () => {
                   e.currentTarget.requestSubmit();
                 }
               }}
+              className="space-y-4"
             >
-              <div className="form-group">
-                <label htmlFor="name">
-                  Full Name <span style={{ color: '#e74c3c' }}>*</span>
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Full Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -257,18 +308,22 @@ const Signup: React.FC = () => {
                       },
                     };
                   })()}
-                  className={signupForm.formState.errors.name ? 'error' : ''}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    signupForm.formState.errors.name ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Enter your full name"
                   maxLength={50}
                 />
                 {signupForm.formState.errors.name && (
-                  <div className="error-message">{signupForm.formState.errors.name.message}</div>
+                  <p className="mt-1 text-sm text-red-600">
+                    {signupForm.formState.errors.name.message}
+                  </p>
                 )}
               </div>
 
-              <div className="form-group">
-                <label htmlFor="email">
-                  Email <span style={{ color: '#e74c3c' }}>*</span>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Email <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -281,20 +336,24 @@ const Signup: React.FC = () => {
                       }
                     },
                   })}
-                  className={signupForm.formState.errors.email ? 'error' : ''}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    signupForm.formState.errors.email ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Enter your email"
                   maxLength={255}
                 />
                 {signupForm.formState.errors.email && (
-                  <div className="error-message">{signupForm.formState.errors.email.message}</div>
+                  <p className="mt-1 text-sm text-red-600">
+                    {signupForm.formState.errors.email.message}
+                  </p>
                 )}
               </div>
 
-              <div className="form-group">
-                <label htmlFor="password">
-                  Password <span style={{ color: '#e74c3c' }}>*</span>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Password <span className="text-red-500">*</span>
                 </label>
-                <div style={{ position: 'relative' }}>
+                <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     id="password"
@@ -305,45 +364,95 @@ const Signup: React.FC = () => {
                         }
                       },
                     })}
-                    className={signupForm.formState.errors.password ? 'error' : ''}
+                    className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      signupForm.formState.errors.password ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     placeholder="Enter password (8-16 characters)"
                     maxLength={16}
                     onPaste={preventPasswordPaste}
                     onContextMenu={preventPasswordContextMenu}
-                    style={{ paddingRight: '40px' }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '10px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      color: '#666',
-                    }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
                     tabIndex={-1}
                   >
-                    {showPassword ? '👁️' : '👁️‍🗨️'}
+                    {showPassword ? (
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                    )}
                   </button>
                 </div>
                 {signupForm.formState.errors.password && (
-                  <div className="error-message">
+                  <p className="mt-1 text-sm text-red-600">
                     {signupForm.formState.errors.password.message}
-                  </div>
+                  </p>
                 )}
                 <PasswordStrengthIndicator password={signupForm.watch('password') || ''} />
               </div>
 
-              <div className="form-group">
-                <label htmlFor="confirmPassword">
-                  Confirm Password <span style={{ color: '#e74c3c' }}>*</span>
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+                  I want to <span className="text-red-500">*</span>
                 </label>
-                <div style={{ position: 'relative' }}>
+                <select
+                  id="role"
+                  {...signupForm.register('role')}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    signupForm.formState.errors.role ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                >
+                  <option value="">Select your role</option>
+                  <option value="buyer">Buy Books (Buyer)</option>
+                  <option value="seller">Sell Books (Seller)</option>
+                </select>
+                {signupForm.formState.errors.role && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {signupForm.formState.errors.role.message}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="confirmPassword"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Confirm Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     id="confirmPassword"
@@ -354,40 +463,71 @@ const Signup: React.FC = () => {
                         }
                       },
                     })}
-                    className={signupForm.formState.errors.confirmPassword ? 'error' : ''}
+                    className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      signupForm.formState.errors.confirmPassword
+                        ? 'border-red-500'
+                        : 'border-gray-300'
+                    }`}
                     placeholder="Confirm your password"
                     maxLength={16}
                     onPaste={preventPasswordPaste}
                     onContextMenu={preventPasswordContextMenu}
-                    style={{ paddingRight: '40px' }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    style={{
-                      position: 'absolute',
-                      right: '10px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      color: '#666',
-                    }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
                     tabIndex={-1}
                   >
-                    {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
+                    {showConfirmPassword ? (
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                    )}
                   </button>
                 </div>
                 {signupForm.formState.errors.confirmPassword && (
-                  <div className="error-message">
+                  <p className="mt-1 text-sm text-red-600">
                     {signupForm.formState.errors.confirmPassword.message}
-                  </div>
+                  </p>
                 )}
               </div>
 
-              <button type="submit" className="btn" disabled={loading}>
+              <button
+                type="submit"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                disabled={loading}
+              >
                 {loading ? 'Creating Account...' : 'Sign Up'}
               </button>
             </form>
@@ -395,9 +535,11 @@ const Signup: React.FC = () => {
         )}
 
         {step === 2 && (
-          <form onSubmit={otpForm.handleSubmit(onOTPSubmit)}>
-            <div className="form-group">
-              <label htmlFor="otp">Verification Code</label>
+          <form onSubmit={otpForm.handleSubmit(onOTPSubmit)} className="space-y-4">
+            <div>
+              <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-1">
+                Verification Code
+              </label>
               <input
                 type="text"
                 id="otp"
@@ -408,26 +550,9 @@ const Signup: React.FC = () => {
                     e.target.value = formatOTPInput(e.target.value);
                   },
                 })}
-                className={otpForm.formState.errors.otp ? 'error' : ''}
-                style={{
-                  letterSpacing: 'normal',
-                  textAlign: 'left',
-                  fontSize: '16px',
-                  fontWeight: '400',
-                  padding: '12px 16px',
-                  border: '2px solid #e1e5e9',
-                  borderRadius: '6px',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  transition: 'all 0.2s ease',
-                  outline: 'none',
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#4A90E2';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e1e5e9';
-                }}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  otpForm.formState.errors.otp ? 'border-red-500' : 'border-gray-300'
+                }`}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !loading) {
                     e.currentTarget.form?.requestSubmit();
@@ -435,57 +560,38 @@ const Signup: React.FC = () => {
                 }}
               />
               {otpForm.formState.errors.otp && (
-                <div className="error-message">{otpForm.formState.errors.otp.message}</div>
+                <p className="mt-1 text-sm text-red-600">{otpForm.formState.errors.otp.message}</p>
               )}
 
-              <div
-                style={{
-                  textAlign: 'right',
-                  marginTop: '8px',
-                  fontSize: '14px',
-                }}
-              >
+              <div className="text-right mt-2">
                 {canResend ? (
                   <button
                     type="button"
                     onClick={onResendOTP}
                     disabled={loading}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#4A90E2',
-                      textDecoration: 'underline',
-                      cursor: loading ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
-                      opacity: loading ? 0.6 : 1,
-                      transition: 'opacity 0.2s ease',
-                    }}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium underline disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? 'Sending...' : 'Resend OTP'}
                   </button>
                 ) : (
-                  <span
-                    style={{
-                      color: '#666',
-                      fontSize: '13px',
-                      fontStyle: 'italic',
-                    }}
-                  >
-                    Resend OTP in {resendTimer}s
-                  </span>
+                  <span className="text-sm text-gray-500 italic">Resend OTP in {resendTimer}s</span>
                 )}
               </div>
             </div>
 
-            <button type="submit" className="btn" disabled={loading}>
+            <button
+              type="submit"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              disabled={loading}
+            >
               {loading ? 'Verifying...' : 'Verify Email'}
             </button>
           </form>
         )}
 
-        <div className="text-center mt-2">
-          <span>Already have an account? </span>
-          <Link to="/login" className="link">
+        <div className="text-center">
+          <span className="text-sm text-gray-600">Already have an account? </span>
+          <Link to="/login" className="text-sm text-blue-600 hover:text-blue-800 font-medium">
             Sign in
           </Link>
         </div>

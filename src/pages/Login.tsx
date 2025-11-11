@@ -53,7 +53,6 @@ const Login: React.FC = () => {
     resolver: yupResolver(schema),
   });
 
-  // Auto-focus on email field when component mounts
   useEffect(() => {
     if (emailInputRef.current) {
       emailInputRef.current.focus();
@@ -78,7 +77,19 @@ const Login: React.FC = () => {
       setRemainingAttempts(null);
       setAccountLocked(false);
       setLockTime(null);
-      navigate('/dashboard');
+      // Get user from result to check role
+      const user = result.payload as { role?: 'buyer' | 'seller' | 'admin' } | undefined;
+      const userRole = user?.role || 'buyer';
+
+      // Redirect based on role
+      if (userRole === 'seller' || userRole === 'admin') {
+        navigate('/dashboard'); // Seller dashboard
+      } else {
+        // For buyers, redirect to buyer dashboard (next-frontend)
+        // Since this is the seller frontend, we'll redirect to dashboard
+        // In a real scenario, you might redirect to a different URL
+        navigate('/dashboard');
+      }
     } else if (login.rejected.match(result)) {
       const payload = result.payload as
         | { message?: string; remainingAttempts?: number; remainingTime?: number }
@@ -97,19 +108,47 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <h1>Welcome Back</h1>
-          <p>Sign in to your account</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
+        <div className="text-center">
+          <div className="flex items-center justify-center mb-4">
+            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg shadow-md">
+              <svg
+                className="w-7 h-7 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                />
+              </svg>
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+          <p className="text-gray-600">Sign in to your account</p>
         </div>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && (
+          <div className="text-sm text-red-600 p-3 bg-red-50 border border-red-200 rounded-md">
+            {error}
+          </div>
+        )}
         {oauthError && (
-          <div className="error-message">Google authentication failed. Please try again.</div>
+          <div className="text-sm text-red-600 p-3 bg-red-50 border border-red-200 rounded-md">
+            Google authentication failed. Please try again.
+          </div>
         )}
 
-        <button type="button" onClick={handleGoogleLogin} className="btn-google" disabled={loading}>
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          disabled={loading}
+        >
           <svg
             width="20"
             height="20"
@@ -137,35 +176,23 @@ const Login: React.FC = () => {
           Continue with Google
         </button>
 
-        <div className="divider">
-          <span>OR</span>
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-4 bg-white text-gray-500">OR</span>
+          </div>
         </div>
 
         {accountLocked && lockTime && (
-          <div
-            className="error-message"
-            style={{
-              marginBottom: '16px',
-              padding: '12px',
-              backgroundColor: '#fee',
-              borderRadius: '6px',
-            }}
-          >
+          <div className="text-sm text-red-600 p-3 bg-red-50 border border-red-200 rounded-md">
             Account temporarily locked. Please try again after {lockTime} seconds.
           </div>
         )}
 
         {remainingAttempts !== null && remainingAttempts > 0 && !accountLocked && (
-          <div
-            className="error-message"
-            style={{
-              marginBottom: '16px',
-              padding: '12px',
-              backgroundColor: '#fff3cd',
-              borderRadius: '6px',
-              color: '#856404',
-            }}
-          >
+          <div className="text-sm p-3 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800">
             {remainingAttempts} login attempt{remainingAttempts !== 1 ? 's' : ''} remaining.
           </div>
         )}
@@ -177,9 +204,12 @@ const Login: React.FC = () => {
               e.currentTarget.requestSubmit();
             }
           }}
+          className="space-y-4"
         >
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
             <input
               type="email"
               id="email"
@@ -200,17 +230,21 @@ const Login: React.FC = () => {
                   },
                 };
               })()}
-              className={errors.email ? 'error' : ''}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                errors.email ? 'border-red-500' : 'border-gray-300'
+              }`}
               placeholder="Enter your email"
               maxLength={255}
               disabled={accountLocked}
             />
-            {errors.email && <div className="error-message">{errors.email.message}</div>}
+            {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>}
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <div style={{ position: 'relative' }}>
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
@@ -221,50 +255,74 @@ const Login: React.FC = () => {
                     }
                   },
                 })}
-                className={errors.password ? 'error' : ''}
+                className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  errors.password ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter your password"
                 onPaste={preventPasswordPaste}
                 onContextMenu={preventPasswordContextMenu}
                 disabled={accountLocked}
-                style={{ paddingRight: '40px' }}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '10px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  color: '#666',
-                }}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
                 tabIndex={-1}
                 disabled={accountLocked}
               >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
+                {showPassword ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                    />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    />
+                  </svg>
+                )}
               </button>
             </div>
-            {errors.password && <div className="error-message">{errors.password.message}</div>}
+            {errors.password && (
+              <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+            )}
           </div>
 
-          <button type="submit" className="btn" disabled={loading || accountLocked}>
+          <button
+            type="submit"
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            disabled={loading || accountLocked}
+          >
             {loading ? 'Signing In...' : accountLocked ? 'Account Locked' : 'Sign In'}
           </button>
         </form>
 
-        <div className="text-center mt-2">
-          <Link to="/forgot-password" className="link">
+        <div className="text-center">
+          <Link
+            to="/forgot-password"
+            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
             Forgot your password?
           </Link>
         </div>
 
-        <div className="text-center mt-2">
-          <span>Don't have an account? </span>
-          <Link to="/signup" className="link">
+        <div className="text-center">
+          <span className="text-sm text-gray-600">Don't have an account? </span>
+          <Link to="/signup" className="text-sm text-blue-600 hover:text-blue-800 font-medium">
             Sign up
           </Link>
         </div>

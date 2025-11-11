@@ -89,7 +89,12 @@ export const login = createAsyncThunk(
 export const signup = createAsyncThunk(
   'auth/signup',
   async (
-    { name, email, password }: { name: string; email: string; password: string },
+    {
+      name,
+      email,
+      password,
+      role,
+    }: { name: string; email: string; password: string; role?: 'buyer' | 'seller' | 'admin' },
     { rejectWithValue }
   ) => {
     try {
@@ -97,6 +102,7 @@ export const signup = createAsyncThunk(
         name,
         email,
         password,
+        role: role || 'buyer',
       });
       const data = response.data;
       if (data.success !== false) {
@@ -210,6 +216,19 @@ export const handleOAuthCallback = createAsyncThunk(
   }
 );
 
+export const updateUserRole = createAsyncThunk(
+  'auth/updateUserRole',
+  async (role: 'buyer' | 'seller' | 'admin', { rejectWithValue }) => {
+    try {
+      const response = await api.put<{ message: string; user: User }>('/user/role', { role });
+      return response.data.user;
+    } catch (error) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      return rejectWithValue(axiosError.response?.data?.message || 'Failed to update role');
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -304,6 +323,19 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload as string;
         state.isAuthenticated = false;
+      })
+      .addCase(updateUserRole.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateUserRole.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload;
+        state.error = null;
+      })
+      .addCase(updateUserRole.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });

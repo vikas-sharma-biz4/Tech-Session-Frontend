@@ -5,6 +5,7 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './store';
 import { checkAuth } from './store/slices/authSlice';
 import ProtectedRoute from './components/ProtectedRoute';
+import RoleProtectedRoute from './components/RoleProtectedRoute';
 import LoadingSpinner from './components/LoadingSpinner';
 
 const Login = lazy(() => import('./pages/Login'));
@@ -35,8 +36,10 @@ const AppContent: React.FC = () => {
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <Navbar />
-                  <Dashboard />
+                  <RoleProtectedRoute allowedRoles={['seller', 'admin']}>
+                    <Navbar />
+                    <Dashboard />
+                  </RoleProtectedRoute>
                 </ProtectedRoute>
               }
             />
