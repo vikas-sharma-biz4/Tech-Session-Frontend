@@ -9,6 +9,7 @@ import {
   PURGE,
   REGISTER,
   createTransform,
+  PersistConfig,
 } from 'redux-persist';
 import secureStorage from '../utils/secureStorage';
 import authReducer from './slices/authSlice';
@@ -39,15 +40,16 @@ const rootReducer = combineReducers({
   auth: authReducer,
 });
 
-const persistConfig = {
+type RootState = ReturnType<typeof rootReducer>;
+
+const persistConfig: PersistConfig<RootState> = {
   key: 'root',
   storage: secureStorage,
   whitelist: ['auth'],
   transforms: [authTransform],
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const persistedReducer = persistReducer(persistConfig, rootReducer as any);
+const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 export const store = configureStore({
   reducer: persistedReducer,
@@ -61,5 +63,5 @@ export const store = configureStore({
 
 export const persistor = persistStore(store);
 
-export type RootState = ReturnType<typeof store.getState>;
+export type { RootState };
 export type AppDispatch = typeof store.dispatch;

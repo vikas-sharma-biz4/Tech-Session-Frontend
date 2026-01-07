@@ -246,7 +246,12 @@ const FileUpload: React.FC = () => {
           <h3>Uploaded Files</h3>
           <div className="files-grid">
             {uploadedFiles.map((file, index) => {
-              const fileUrl = `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000'}${file.url}`;
+              // Use FastAPI backend URL if available, otherwise fallback to Node.js backend
+              const baseUrl =
+                process.env.REACT_APP_FASTAPI_URL ||
+                process.env.REACT_APP_API_URL?.replace('/api', '') ||
+                'http://localhost:8000';
+              const fileUrl = `${baseUrl}${file.url}`;
               const isImage = isImageFile(file.originalName, file.mimeType);
 
               return (
