@@ -18,12 +18,13 @@ export interface Book {
   };
 }
 
+// FastAPI response structure
 export interface BooksResponse {
-  books: Book[];
+  data: Book[];
   total: number;
   page: number;
   limit: number;
-  totalPages: number;
+  total_pages: number;
 }
 
 export interface BookFormData {

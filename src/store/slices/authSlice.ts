@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../../services/api';
+import api, { fastApi } from '../../services/api';
 import { User } from '../../types';
 import secureStorage from '../../utils/secureStorage';
 
@@ -17,41 +17,70 @@ const initialState: AuthState = {
   isAuthenticated: false,
 };
 
-export const checkAuth = createAsyncThunk('auth/checkAuth', async (_, { rejectWithValue }) => {
-  try {
-    const token = await secureStorage.getItem('token');
-    if (!token) {
-      return null;
+export const checkAuth = createAsyncThunk(
+  'auth/checkAuth',
+  async (_, { rejectWithValue, getState }) => {
+    // Prevent duplicate concurrent calls
+    const state = getState() as { auth: { loading: boolean; user: User | null } };
+    if (state.auth.loading) {
+      // Already checking, return existing user or null
+      return state.auth.user;
     }
 
-    if (api.defaults.headers.common) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    }
+    try {
+      const token = await secureStorage.getItem('token');
+      if (!token) {
+        return null;
+      }
 
-    const response = await api.get<{ user: User }>('/user/profile');
-    return response.data.user;
-  } catch (error) {
-    await secureStorage.removeItem('token');
-    if (api.defaults.headers.common) {
-      delete api.defaults.headers.common['Authorization'];
+      if (fastApi.defaults.headers.common) {
+        fastApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+
+      // FastAPI endpoint: GET /api/auth/me
+      const response = await fastApi.get<User>('/api/auth/me');
+      return response.data;
+    } catch (error) {
+      await secureStorage.removeItem('token');
+      if (fastApi.defaults.headers.common) {
+        delete fastApi.defaults.headers.common['Authorization'];
+      }
+      return rejectWithValue('Token verification failed');
     }
-    return rejectWithValue('Token verification failed');
   }
-});
+);
 
 export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
     try {
-      const response = await api.post<{ token: string; user: User }>('/auth/login', {
-        email,
-        password,
-      });
-      const { token, user } = response.data;
+      // FastAPI uses OAuth2PasswordRequestForm (form data) with username/password
+      const formData = new URLSearchParams();
+      formData.append('username', email);
+      formData.append('password', password);
+
+      const response = await fastApi.post<{ access_token: string; token_type: string }>(
+        '/api/auth/login',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      const token = response.data.access_token;
+
+      // Get user info using the token
+      if (fastApi.defaults.headers.common) {
+        fastApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      }
+      const userResponse = await fastApi.get<User>('/api/auth/me');
+      const user = userResponse.data;
 
       await secureStorage.setItem('token', token);
-      if (api.defaults.headers.common) {
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      if (fastApi.defaults.headers.common) {
+        fastApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       }
 
       return user;
@@ -98,20 +127,43 @@ export const signup = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await api.post<{ message: string; success?: boolean }>('/auth/signup', {
+      // FastAPI endpoint: POST /api/auth/signup
+      const response = await fastApi.post<User>('/api/auth/signup', {
         name,
         email,
         password,
         role: role || 'buyer',
       });
-      const data = response.data;
-      if (data.success !== false) {
-        return { success: true, email };
+
+      const user = response.data;
+
+      // Auto-login after signup
+      const loginFormData = new URLSearchParams();
+      loginFormData.append('username', email);
+      loginFormData.append('password', password);
+
+      const loginResponse = await fastApi.post<{ access_token: string; token_type: string }>(
+        '/api/auth/login',
+        loginFormData,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      const token = loginResponse.data.access_token;
+      await secureStorage.setItem('token', token);
+      if (fastApi.defaults.headers.common) {
+        fastApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       }
-      return rejectWithValue(data.message || 'Signup failed');
+
+      return { success: true, email, user };
     } catch (error) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      return rejectWithValue(axiosError.response?.data?.message || 'Signup failed');
+      const axiosError = error as { response?: { data?: { detail?: string; message?: string } } };
+      return rejectWithValue(
+        axiosError.response?.data?.detail || axiosError.response?.data?.message || 'Signup failed'
+      );
     }
   }
 );
@@ -127,8 +179,8 @@ export const verifySignupOTP = createAsyncThunk(
       const { token, user } = response.data;
 
       await secureStorage.setItem('token', token);
-      if (api.defaults.headers.common) {
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      if (fastApi.defaults.headers.common) {
+        fastApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       }
 
       return user;
@@ -206,8 +258,8 @@ export const handleOAuthCallback = createAsyncThunk(
   async ({ token, user }: { token: string; user: User }, { rejectWithValue }) => {
     try {
       await secureStorage.setItem('token', token);
-      if (api.defaults.headers.common) {
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      if (fastApi.defaults.headers.common) {
+        fastApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       }
       return user;
     } catch (error) {
@@ -220,11 +272,16 @@ export const updateUserRole = createAsyncThunk(
   'auth/updateUserRole',
   async (role: 'buyer' | 'seller' | 'admin', { rejectWithValue }) => {
     try {
-      const response = await api.put<{ message: string; user: User }>('/user/role', { role });
-      return response.data.user;
+      // FastAPI endpoint: PUT /api/user/role with body { role: "buyer" }
+      const response = await fastApi.put<User>('/api/user/role', { role });
+      return response.data;
     } catch (error) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      return rejectWithValue(axiosError.response?.data?.message || 'Failed to update role');
+      const axiosError = error as { response?: { data?: { detail?: string; message?: string } } };
+      return rejectWithValue(
+        axiosError.response?.data?.detail ||
+          axiosError.response?.data?.message ||
+          'Failed to update role'
+      );
     }
   }
 );
@@ -237,6 +294,9 @@ const authSlice = createSlice({
       secureStorage.removeItem('token').catch((err) => {
         console.error('Failed to remove token:', err);
       });
+      if (fastApi.defaults.headers.common) {
+        delete fastApi.defaults.headers.common['Authorization'];
+      }
       if (api.defaults.headers.common) {
         delete api.defaults.headers.common['Authorization'];
       }

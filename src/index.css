@@ -558,7 +558,6 @@ code {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #ffe5e5 0%, #e8f4f8 50%, #fff9e6 100%);
 }
 
 .loading-spinner {

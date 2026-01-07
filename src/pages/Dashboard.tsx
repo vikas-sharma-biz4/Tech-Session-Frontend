@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useAppSelector } from '../store/hooks';
 import { selectUser } from '../store/selectors';
-import BookList from '../components/BookList';
-import AddBookForm from '../components/AddBookForm';
+import BookListEnhanced from '../components/BookListEnhanced';
+import AddBookFormEnhanced from '../components/AddBookFormEnhanced';
 import { Book } from '../types/books';
 
 const Dashboard: React.FC = () => {
@@ -77,11 +77,11 @@ const Dashboard: React.FC = () => {
                 Add New Book
               </button>
             </div>
-            <BookList key={refreshKey} onEdit={handleEditBook} onRefresh={handleRefresh} />
+            <BookListEnhanced key={refreshKey} onEdit={handleEditBook} onRefresh={handleRefresh} />
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow-md p-8">
-            <AddBookForm
+            <AddBookFormEnhanced
               editingBook={editingBook}
               onSuccess={handleFormSuccess}
               onCancel={handleFormCancel}

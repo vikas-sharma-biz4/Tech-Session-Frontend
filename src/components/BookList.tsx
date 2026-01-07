@@ -116,17 +116,17 @@ const BookList: React.FC<BookListProps> = ({ onEdit, onRefresh }) => {
         {books.map((book) => (
           <div
             key={book.id}
-            className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+            className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col h-full"
           >
             {book.image_url && (
-              <div className="w-full h-48 bg-gray-100 overflow-hidden">
+              <div className="w-full h-48 bg-gray-100 overflow-hidden flex-shrink-0">
                 <img src={book.image_url} alt={book.title} className="w-full h-full object-cover" />
               </div>
             )}
-            <div className="p-4">
+            <div className="p-4 flex flex-col flex-grow">
               <h3 className="text-lg font-semibold text-gray-900 mb-1">{book.title}</h3>
               <p className="text-sm text-gray-600 mb-2">by {book.author}</p>
-              {book.isbn && <p className="text-xs text-gray-500 mb-3">ISBN: {book.isbn}</p>}
+              <p className="text-xs text-gray-500 mb-3">ISBN: {book.isbn || 'NA'}</p>
               <div className="flex gap-2 mb-3">
                 <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
                   {formatType(book.type)}
@@ -136,10 +136,10 @@ const BookList: React.FC<BookListProps> = ({ onEdit, onRefresh }) => {
                 </span>
               </div>
               <p className="text-lg font-bold text-gray-900 mb-2">{formatPrice(book.price)}</p>
-              {book.description && (
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2">{book.description}</p>
-              )}
-              <div className="flex gap-2">
+              <p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5rem]">
+                {book.description || 'NA'}
+              </p>
+              <div className="flex gap-2 mt-auto">
                 <button
                   onClick={() => onEdit(book)}
                   className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"

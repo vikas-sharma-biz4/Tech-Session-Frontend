@@ -129,7 +129,7 @@ const Signup: React.FC = () => {
   }, [resendTimer]);
 
   const handleGoogleSignup = (): void => {
-    const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const backendUrl = process.env.REACT_APP_FASTAPI_URL || 'http://localhost:8000';
     window.location.href = `${backendUrl}/api/auth/google`;
   };
 

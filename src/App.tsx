@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, lazy } from 'react';
+import React, { useEffect, Suspense, lazy, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -17,8 +17,16 @@ const Navbar = lazy(() => import('./components/Navbar'));
 const OAuthCallback = lazy(() => import('./pages/OAuthCallback'));
 
 const AppContent: React.FC = () => {
+  const hasCheckedAuthRef = useRef(false);
+
   useEffect(() => {
-    store.dispatch(checkAuth());
+    // Prevent duplicate calls from React StrictMode
+    // Only dispatch if not already checking and we haven't checked before
+    const state = store.getState();
+    if (!hasCheckedAuthRef.current && !state.auth.loading) {
+      hasCheckedAuthRef.current = true;
+      store.dispatch(checkAuth());
+    }
   }, []);
 
   return (

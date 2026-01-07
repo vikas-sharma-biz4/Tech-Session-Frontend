@@ -14,12 +14,15 @@ export const initializeSocket = async (): Promise<Socket> => {
     throw new Error('No authentication token found');
   }
 
+  // Note: FastAPI backend doesn't have Socket.IO support
+  // This will only work if the Node.js backend is running on port 5000
   const apiUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
   socket = io(apiUrl, {
     auth: {
       token: token,
     },
     transports: ['websocket', 'polling'],
+    reconnection: false, // Disable auto-reconnect if backend doesn't support it
   });
 
   socket.on('connect', () => {
