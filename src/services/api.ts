@@ -36,12 +36,18 @@ const requestInterceptor = async (config: InternalAxiosRequestConfig) => {
 };
 
 // Response interceptor for both API instances
+let isRedirecting = false; // Prevent multiple redirects
+
 const responseInterceptor = {
   onFulfilled: (response: AxiosResponse) => response,
   onRejected: async (error: AxiosError) => {
     if (error.response?.status === 401) {
-      await secureStorage.removeItem('token');
-      window.location.href = '/login';
+      // Only redirect if not already redirecting and not already on login page
+      if (!isRedirecting && window.location.pathname !== '/login') {
+        isRedirecting = true;
+        await secureStorage.removeItem('token');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   },

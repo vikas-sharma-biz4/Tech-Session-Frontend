@@ -11,6 +11,9 @@ import { bookService } from '../services/books';
 import { Book } from '../types/books';
 import LoadingSpinner from './LoadingSpinner';
 import { useBookReducer } from '../hooks/useBookReducer';
+import { useAppSelector } from '../store/hooks';
+import { selectIsAuthenticated } from '../store/selectors';
+import secureStorage from '../utils/secureStorage';
 
 // Extended Book type with additional computed properties
 interface ExtendedBook extends Book {
@@ -127,6 +130,7 @@ function extendBook(book: Book): ExtendedBook {
 
 const BookListEnhanced: React.FC<BookListProps> = ({ onEdit, onRefresh }) => {
   const { state, actions } = useBookReducer();
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const hasFetchedRef = useRef(false);
 
   // Memoized extended books to prevent recalculation on every render
@@ -137,12 +141,28 @@ const BookListEnhanced: React.FC<BookListProps> = ({ onEdit, onRefresh }) => {
   // Fetch books only once on mount (refreshKey in parent will remount component when needed)
   // Use ref to prevent duplicate calls from React StrictMode double renders
   useEffect(() => {
-    if (!hasFetchedRef.current && !state.loading && state.books.length === 0) {
-      hasFetchedRef.current = true;
-      actions.fetchBooks(() => bookService.getMyBooks());
+    // Only fetch if user is authenticated
+    if (!isAuthenticated) {
+      return;
     }
+
+    // Check if user is authenticated before making API calls
+    const checkAuthAndFetch = async () => {
+      const token = await secureStorage.getItem('token');
+      if (!token) {
+        // No token, don't make API calls
+        return;
+      }
+
+      if (!hasFetchedRef.current && !state.loading && state.books.length === 0) {
+        hasFetchedRef.current = true;
+        actions.fetchBooks(() => bookService.getMyBooks());
+      }
+    };
+
+    checkAuthAndFetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty array - only fetch on mount
+  }, [isAuthenticated]); // Depend on isAuthenticated
 
   const handleDelete = async (id: string) => {
     // eslint-disable-next-line no-alert
