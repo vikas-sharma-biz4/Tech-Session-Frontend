@@ -46,7 +46,9 @@ const AddBookFormEnhanced: React.FC<AddBookFormProps> = ({ onSuccess, editingBoo
   const [error, setError] = useState<string | null>(null);
 
   // useRef for title input focus management
-  const titleInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLInputElement | null>(
+    null
+  ) as React.MutableRefObject<HTMLInputElement | null>;
 
   // useRef for tracking previous editing book to detect changes
   const previousEditingBookRef = useRef<Book | null | undefined>(null);
@@ -62,6 +64,8 @@ const AddBookFormEnhanced: React.FC<AddBookFormProps> = ({ onSuccess, editingBoo
     setValue,
   } = useForm<BookFormData>({
     resolver: yupResolver(bookSchema),
+    mode: 'onBlur', // Validate on blur, not on every change
+    reValidateMode: 'onBlur', // Re-validate on blur after error
     defaultValues: {
       title: '',
       author: '',
@@ -156,8 +160,20 @@ const AddBookFormEnhanced: React.FC<AddBookFormProps> = ({ onSuccess, editingBoo
           <input
             id="title"
             type="text"
-            {...register('title')}
-            ref={titleInputRef}
+            {...(() => {
+              const { ref, ...rest } = register('title');
+              return {
+                ...rest,
+                ref: (e: HTMLInputElement | null) => {
+                  if (typeof ref === 'function') {
+                    ref(e);
+                  } else if (ref) {
+                    (ref as React.MutableRefObject<HTMLInputElement | null>).current = e;
+                  }
+                  titleInputRef.current = e;
+                },
+              };
+            })()}
             className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               errors.title ? 'border-red-500' : 'border-gray-300'
             }`}
