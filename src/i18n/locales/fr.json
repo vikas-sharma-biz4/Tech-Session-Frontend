@@ -1,0 +1,54 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "submit": "Soumettre",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent"
+  },
+  "auth": {
+    "login": "Se connecter",
+    "signup": "S'inscrire",
+    "logout": "Se déconnecter",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "forgotPassword": "Mot de passe oublié?",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "loginWithGoogle": "Se connecter avec Google",
+    "alreadyHaveAccount": "Vous avez déjà un compte?",
+    "dontHaveAccount": "Vous n'avez pas de compte?",
+    "invalidCredentials": "E-mail ou mot de passe invalide",
+    "passwordMismatch": "Les mots de passe ne correspondent pas"
+  },
+  "books": {
+    "title": "Titre",
+    "author": "Auteur",
+    "price": "Prix",
+    "condition": "Condition",
+    "type": "Type",
+    "description": "Description",
+    "addBook": "Ajouter un livre",
+    "editBook": "Modifier le livre",
+    "deleteBook": "Supprimer le livre",
+    "myBooks": "Mes livres",
+    "allBooks": "Tous les livres",
+    "noBooks": "Aucun livre trouvé",
+    "bookAdded": "Livre ajouté avec succès",
+    "bookUpdated": "Livre mis à jour avec succès",
+    "bookDeleted": "Livre supprimé avec succès"
+  },
+  "errors": {
+    "somethingWentWrong": "Quelque chose s'est mal passé",
+    "unexpectedError": "Une erreur inattendue s'est produite",
+    "tryAgain": "Réessayer",
+    "networkError": "Erreur réseau. Veuillez vérifier votre connexion.",
+    "serverError": "Erreur serveur. Veuillez réessayer plus tard."
+  }
+}

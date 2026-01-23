@@ -1,0 +1,54 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "submit": "Enviar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "previous": "Anterior"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "signup": "Registrarse",
+    "logout": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "resetPassword": "Restablecer contraseña",
+    "loginWithGoogle": "Iniciar sesión con Google",
+    "alreadyHaveAccount": "¿Ya tienes una cuenta?",
+    "dontHaveAccount": "¿No tienes una cuenta?",
+    "invalidCredentials": "Correo electrónico o contraseña inválidos",
+    "passwordMismatch": "Las contraseñas no coinciden"
+  },
+  "books": {
+    "title": "Título",
+    "author": "Autor",
+    "price": "Precio",
+    "condition": "Condición",
+    "type": "Tipo",
+    "description": "Descripción",
+    "addBook": "Agregar libro",
+    "editBook": "Editar libro",
+    "deleteBook": "Eliminar libro",
+    "myBooks": "Mis libros",
+    "allBooks": "Todos los libros",
+    "noBooks": "No se encontraron libros",
+    "bookAdded": "Libro agregado exitosamente",
+    "bookUpdated": "Libro actualizado exitosamente",
+    "bookDeleted": "Libro eliminado exitosamente"
+  },
+  "errors": {
+    "somethingWentWrong": "Algo salió mal",
+    "unexpectedError": "Ocurrió un error inesperado",
+    "tryAgain": "Intentar de nuevo",
+    "networkError": "Error de red. Por favor verifica tu conexión.",
+    "serverError": "Error del servidor. Por favor intenta más tarde."
+  }
+}

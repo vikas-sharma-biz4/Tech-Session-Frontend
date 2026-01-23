@@ -7,6 +7,7 @@ import { checkAuth } from './store/slices/authSlice';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
 import LoadingSpinner from './components/LoadingSpinner';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
@@ -62,11 +63,13 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <Provider store={store}>
-      <PersistGate loading={<LoadingSpinner />} persistor={persistor}>
-        <AppContent />
-      </PersistGate>
-    </Provider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <PersistGate loading={<LoadingSpinner />} persistor={persistor}>
+          <AppContent />
+        </PersistGate>
+      </Provider>
+    </ErrorBoundary>
   );
 };
 
